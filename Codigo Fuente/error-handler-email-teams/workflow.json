@@ -1,0 +1,251 @@
+{
+  "id": "eDCgfMVZmW4xTA5B",
+  "name": "🚨 Error Handler - Email & Teams",
+  "active": true,
+  "description": null,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "dd9354e9-2d2f-4aef-bb3a-140a70e70fb7",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const errorData = $input.first().json;\n\nconst workflowName = errorData.workflow?.name || 'Desconocido';\nconst workflowId = errorData.workflow?.id || 'N/A';\nconst lastNode = errorData.execution?.lastNodeExecuted || 'Desconocido';\nconst errorMessage = errorData.execution?.error?.message || 'Sin mensaje de error';\nconst errorStack = errorData.execution?.error?.stack || 'Sin stack trace';\nconst executionId = errorData.execution?.id || 'N/A';\nconst executionMode = errorData.execution?.mode || 'N/A';\nconst timestamp = new Date().toLocaleString('es-GT', { timeZone: 'America/Guatemala' });\n\nconst n8nBaseUrl = 'https://flexcrmtest.app.n8n.cloud';\nconst executionUrl = `${n8nBaseUrl}/workflow/${workflowId}/executions/${executionId}`;\n\nlet severity = 'MEDIA';\nlet severityEmoji = '🟡';\nif (executionMode === 'trigger' || executionMode === 'webhook') {\n  severity = 'ALTA';\n  severityEmoji = '🔴';\n} else if (executionMode === 'manual') {\n  severity = 'BAJA';\n  severityEmoji = '🟢';\n}\n\nconst severityColor = severity === 'ALTA' ? '#dc3545' : severity === 'MEDIA' ? '#fd7e14' : '#28a745';\n\nconst teamsMessage = {\n  \"@type\": \"MessageCard\",\n  \"@context\": \"http://schema.org/extensions\",\n  \"themeColor\": severity === 'ALTA' ? 'FF0000' : severity === 'MEDIA' ? 'FFA500' : '00FF00',\n  \"summary\": `Error en n8n: ${workflowName}`,\n  \"sections\": [{\n    \"activityTitle\": `${severityEmoji} Error en Workflow de n8n`,\n    \"activitySubtitle\": timestamp,\n    \"facts\": [\n      { \"name\": \"Workflow\", \"value\": workflowName },\n      { \"name\": \"Workflow ID\", \"value\": workflowId },\n      { \"name\": \"Nodo con Error\", \"value\": lastNode },\n      { \"name\": \"Severidad\", \"value\": `${severityEmoji} ${severity}` },\n      { \"name\": \"Modo\", \"value\": executionMode },\n      { \"name\": \"Ejecución ID\", \"value\": String(executionId) },\n      { \"name\": \"Error\", \"value\": errorMessage }\n    ],\n    \"markdown\": true\n  }],\n  \"potentialAction\": [{\n    \"@type\": \"OpenUri\",\n    \"name\": \"Ver Ejecución en n8n\",\n    \"targets\": [{ \"os\": \"default\", \"uri\": executionUrl }]\n  }]\n};\n\nconst teamsHtml = `<div style=\"font-family:Segoe UI,sans-serif;\">\n<h2 style=\"color:${severityColor};margin:0 0 8px 0;\">${severityEmoji} Error en Workflow de n8n</h2>\n<p style=\"color:#666;margin:0 0 16px 0;\">${timestamp}</p>\n<table style=\"border-collapse:collapse;width:100%;\">\n<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#888;font-weight:600;\">Workflow</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;\">${workflowName}</td></tr>\n<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#888;font-weight:600;\">Workflow ID</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;\">${workflowId}</td></tr>\n<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#888;font-weight:600;\">Nodo con Error</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#856404;font-weight:600;\">${lastNode}</td></tr>\n<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#888;font-weight:600;\">Severidad</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;color:${severityColor};\">${severityEmoji} ${severity}</td></tr>\n<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#888;font-weight:600;\">Modo</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;\">${executionMode}</td></tr>\n<tr><td style=\"padding:8px 12px;border-bottom:1px solid #eee;color:#888;font-weight:600;\">Ejecución ID</td><td style=\"padding:8px 12px;border-bottom:1px solid #eee;\">${executionId}</td></tr>\n</table>\n<div style=\"background-color:#fdf2f2;border-left:4px solid #dc3545;padding:12px 16px;margin:16px 0;border-radius:4px;\">\n<strong style=\"color:#dc3545;\">Error:</strong><br/>\n<code style=\"color:#721c24;\">${errorMessage}</code>\n</div>\n<a href=\"${executionUrl}\" style=\"display:inline-block;background-color:#10254e;color:#ffffff;padding:10px 24px;text-decoration:none;border-radius:6px;font-weight:600;margin-top:8px;\">Ver Ejecución en n8n →</a>\n<p style=\"color:#999;font-size:12px;margin-top:16px;\">Grupo Apolo • Dirección de IT • Coordinación de Ciberseguridad</p>\n</div>`;\n\nconst emailHtml = `<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head><body style=\"margin:0;padding:0;background-color:#eef1f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#eef1f5;padding:30px 10px;\"><tr><td align=\"center\"><table role=\"presentation\" width=\"650\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);\"><tr><td style=\"background:linear-gradient(135deg,#10254e 0%,#1a3a6e 50%,#10254e 100%);padding:40px 40px 30px 40px;text-align:center;\"><img src=\"https://raw.githubusercontent.com/BraulioApolo/LogosApolo/main/Logotipo-Apolo-version-blanco.png\" alt=\"Grupo Apolo\" width=\"280\" style=\"display:block;margin:0 auto 25px auto;max-width:280px;height:auto;filter:brightness(1.15);\"><table role=\"presentation\" width=\"60\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 20px auto;\"><tr><td style=\"height:3px;background:linear-gradient(90deg,transparent,#00d9ff,transparent);border-radius:2px;\"></td></tr></table><h1 style=\"margin:0;font-size:22px;font-weight:600;color:#ffffff;letter-spacing:1px;text-transform:uppercase;\">Alerta de Error en Automatización</h1><p style=\"margin:8px 0 0 0;font-size:13px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;\">Dirección de IT &bull; Monitoreo de Workflows</p></td></tr><tr><td style=\"padding:0;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td style=\"background-color:${severityColor};padding:14px 40px;text-align:center;\"><span style=\"font-size:14px;font-weight:700;color:#ffffff;letter-spacing:1.5px;text-transform:uppercase;\">${severityEmoji} SEVERIDAD: ${severity}</span></td></tr></table></td></tr><tr><td style=\"padding:20px 40px 0 40px;text-align:right;\"><span style=\"font-size:12px;color:#8c95a1;letter-spacing:0.3px;\">${timestamp}</span></td></tr><tr><td style=\"padding:15px 40px 30px 40px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f8f9fb;border-radius:12px;overflow:hidden;margin-bottom:20px;\"><tr><td style=\"padding:16px 20px;border-bottom:1px solid #e9ecef;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td width=\"140\" style=\"font-size:12px;font-weight:600;color:#8c95a1;text-transform:uppercase;letter-spacing:0.8px;vertical-align:top;padding-top:2px;\">Workflow</td><td style=\"font-size:15px;font-weight:600;color:#10254e;\">${workflowName}</td></tr></table></td></tr><tr><td style=\"padding:16px 20px;border-bottom:1px solid #e9ecef;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td width=\"140\" style=\"font-size:12px;font-weight:600;color:#8c95a1;text-transform:uppercase;letter-spacing:0.8px;vertical-align:top;padding-top:2px;\">Workflow ID</td><td style=\"font-size:14px;color:#495057;font-family:'Consolas','Courier New',monospace;\">${workflowId}</td></tr></table></td></tr><tr><td style=\"padding:16px 20px;border-bottom:1px solid #e9ecef;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td width=\"140\" style=\"font-size:12px;font-weight:600;color:#8c95a1;text-transform:uppercase;letter-spacing:0.8px;vertical-align:top;padding-top:2px;\">Nodo con Error</td><td><span style=\"display:inline-block;background-color:#fff3cd;color:#856404;font-size:13px;font-weight:600;padding:4px 12px;border-radius:6px;border:1px solid #ffc107;\">${lastNode}</span></td></tr></table></td></tr><tr><td style=\"padding:16px 20px;border-bottom:1px solid #e9ecef;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td width=\"140\" style=\"font-size:12px;font-weight:600;color:#8c95a1;text-transform:uppercase;letter-spacing:0.8px;vertical-align:top;padding-top:2px;\">Modo</td><td style=\"font-size:14px;color:#495057;\">${executionMode}</td></tr></table></td></tr><tr><td style=\"padding:16px 20px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td width=\"140\" style=\"font-size:12px;font-weight:600;color:#8c95a1;text-transform:uppercase;letter-spacing:0.8px;vertical-align:top;padding-top:2px;\">Ejecución ID</td><td style=\"font-size:13px;color:#6c757d;font-family:'Consolas','Courier New',monospace;\">${executionId}</td></tr></table></td></tr></table><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#fdf2f2;border-radius:12px;overflow:hidden;border-left:4px solid #dc3545;margin-bottom:20px;\"><tr><td style=\"padding:20px;\"><p style=\"margin:0 0 8px 0;font-size:11px;font-weight:700;color:#dc3545;text-transform:uppercase;letter-spacing:1px;\">Mensaje de Error</p><p style=\"margin:0;font-size:14px;color:#721c24;font-family:'Consolas','Courier New',monospace;line-height:1.6;word-break:break-word;\">${errorMessage}</p></td></tr></table><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:#f0f2f5;border-radius:12px;overflow:hidden;margin-bottom:25px;\"><tr><td style=\"padding:20px;\"><p style=\"margin:0 0 10px 0;font-size:11px;font-weight:700;color:#6c757d;text-transform:uppercase;letter-spacing:1px;\">Stack Trace</p><div style=\"background-color:#1e1e2e;border-radius:8px;padding:16px;overflow-x:auto;\"><pre style=\"margin:0;font-size:11px;color:#a9b7c6;font-family:'Consolas','Courier New',monospace;line-height:1.5;white-space:pre-wrap;word-break:break-word;\">${errorStack}</pre></div></td></tr></table><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:5px 0 10px 0;\"><a href=\"${executionUrl}\" target=\"_blank\" style=\"display:inline-block;background:linear-gradient(135deg,#10254e 0%,#1a3a6e 100%);color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:0.5px;\">Ver Ejecución en n8n →</a></td></tr></table></td></tr><tr><td style=\"background-color:#10254e;padding:25px 40px;text-align:center;\"><p style=\"margin:0 0 6px 0;font-size:12px;color:rgba(255,255,255,0.6);letter-spacing:0.3px;\">Alerta generada automáticamente por n8n Error Handler</p><p style=\"margin:0;font-size:11px;color:rgba(255,255,255,0.4);\">Grupo Apolo &bull; Dirección de IT &bull; Coordinación de Ciberseguridad</p></td></tr></table></td></tr></table></body></html>`;\n\nconst emailSubject = `${severityEmoji} [n8n Error] ${workflowName} - Nodo: ${lastNode} (${severity})`;\n\nreturn [{\n  json: {\n    workflowName,\n    workflowId,\n    lastNode,\n    errorMessage,\n    errorStack,\n    executionId,\n    executionMode,\n    executionUrl,\n    timestamp,\n    severity,\n    severityEmoji,\n    teamsMessage,\n    teamsHtml,\n    emailHtml,\n    emailSubject\n  }\n}];"
+      },
+      "id": "6e342b6a-b4d7-4565-be23-080c9713cb46",
+      "name": "Formatear Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "sistemas@espacioflex.gt",
+        "toEmail": "Bdelsas@apolo.gt",
+        "subject": "={{ $json.emailSubject }}",
+        "emailFormat": "html",
+        "html": "=<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Alerta de Error - n8n</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #eef1f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\">\n\n  <!-- Wrapper -->\n  <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: #eef1f5; padding: 30px 10px;\">\n    <tr>\n      <td align=\"center\">\n\n        <!-- Container -->\n        <table role=\"presentation\" width=\"650\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);\">\n\n          <!-- ============================================ -->\n          <!-- HEADER CON LOGO -->\n          <!-- ============================================ -->\n          <tr>\n            <td style=\"background: linear-gradient(135deg, #10254e 0%, #1a3a6e 50%, #10254e 100%); padding: 40px 40px 30px 40px; text-align: center;\">\n              <!-- Logo Grupo Apolo -->\n              <img src=\"https://raw.githubusercontent.com/BraulioApolo/LogosApolo/main/Logotipo-Apolo-version-blanco.png\" \n                   alt=\"Grupo Apolo\" \n                   width=\"280\" \n                   style=\"display: block; margin: 0 auto 25px auto; max-width: 280px; height: auto; filter: brightness(1.15);\">\n              \n              <!-- Línea separadora decorativa -->\n              <table role=\"presentation\" width=\"60\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin: 0 auto 20px auto;\">\n                <tr>\n                  <td style=\"height: 3px; background: linear-gradient(90deg, transparent, #00d9ff, transparent); border-radius: 2px;\"></td>\n                </tr>\n              </table>\n\n              <!-- Título de la alerta -->\n              <h1 style=\"margin: 0; font-size: 22px; font-weight: 600; color: #ffffff; letter-spacing: 1px; text-transform: uppercase;\">\n                Alerta de Error en Automatización\n              </h1>\n              <p style=\"margin: 8px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.7); letter-spacing: 0.5px;\">\n                Dirección de IT &bull; Monitoreo de Workflows\n              </p>\n            </td>\n          </tr>\n\n          <!-- ============================================ -->\n          <!-- BARRA DE SEVERIDAD -->\n          <!-- ============================================ -->\n          <tr>\n            <td style=\"padding: 0;\">\n              <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                <tr>\n                  <td style=\"background-color: {{ $json.severity === 'ALTA' ? '#dc3545' : $json.severity === 'MEDIA' ? '#fd7e14' : '#28a745' }}; padding: 14px 40px; text-align: center;\">\n                    <span style=\"font-size: 14px; font-weight: 700; color: #ffffff; letter-spacing: 1.5px; text-transform: uppercase;\">\n                      {{ $json.severityEmoji }} SEVERIDAD: {{ $json.severity }}\n                    </span>\n                  </td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n          <!-- ============================================ -->\n          <!-- TIMESTAMP -->\n          <!-- ============================================ -->\n          <tr>\n            <td style=\"padding: 20px 40px 0 40px; text-align: right;\">\n              <span style=\"font-size: 12px; color: #8c95a1; letter-spacing: 0.3px;\">\n                {{ $json.timestamp }}\n              </span>\n            </td>\n          </tr>\n\n          <!-- ============================================ -->\n          <!-- DETALLES DEL ERROR -->\n          <!-- ============================================ -->\n          <tr>\n            <td style=\"padding: 15px 40px 30px 40px;\">\n\n              <!-- Card: Info del Workflow -->\n              <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: #f8f9fb; border-radius: 12px; overflow: hidden; margin-bottom: 20px;\">\n                \n                <!-- Workflow Name -->\n                <tr>\n                  <td style=\"padding: 16px 20px; border-bottom: 1px solid #e9ecef;\">\n                    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                      <tr>\n                        <td width=\"140\" style=\"font-size: 12px; font-weight: 600; color: #8c95a1; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: top; padding-top: 2px;\">\n                          Workflow\n                        </td>\n                        <td style=\"font-size: 15px; font-weight: 600; color: #10254e;\">\n                          {{ $json.workflowName }}\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n\n                <!-- Workflow ID -->\n                <tr>\n                  <td style=\"padding: 16px 20px; border-bottom: 1px solid #e9ecef;\">\n                    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                      <tr>\n                        <td width=\"140\" style=\"font-size: 12px; font-weight: 600; color: #8c95a1; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: top; padding-top: 2px;\">\n                          Workflow ID\n                        </td>\n                        <td style=\"font-size: 14px; color: #495057; font-family: 'Consolas', 'Courier New', monospace;\">\n                          {{ $json.workflowId }}\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n\n                <!-- Nodo con Error -->\n                <tr>\n                  <td style=\"padding: 16px 20px; border-bottom: 1px solid #e9ecef;\">\n                    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                      <tr>\n                        <td width=\"140\" style=\"font-size: 12px; font-weight: 600; color: #8c95a1; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: top; padding-top: 2px;\">\n                          Nodo con Error\n                        </td>\n                        <td>\n                          <span style=\"display: inline-block; background-color: #fff3cd; color: #856404; font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 6px; border: 1px solid #ffc107;\">\n                            {{ $json.lastNode }}\n                          </span>\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n\n                <!-- Modo de Ejecución -->\n                <tr>\n                  <td style=\"padding: 16px 20px; border-bottom: 1px solid #e9ecef;\">\n                    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                      <tr>\n                        <td width=\"140\" style=\"font-size: 12px; font-weight: 600; color: #8c95a1; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: top; padding-top: 2px;\">\n                          Modo\n                        </td>\n                        <td style=\"font-size: 14px; color: #495057;\">\n                          {{ $json.executionMode }}\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n\n                <!-- Execution ID -->\n                <tr>\n                  <td style=\"padding: 16px 20px;\">\n                    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                      <tr>\n                        <td width=\"140\" style=\"font-size: 12px; font-weight: 600; color: #8c95a1; text-transform: uppercase; letter-spacing: 0.8px; vertical-align: top; padding-top: 2px;\">\n                          Ejecución ID\n                        </td>\n                        <td style=\"font-size: 13px; color: #6c757d; font-family: 'Consolas', 'Courier New', monospace;\">\n                          {{ $json.executionId }}\n                        </td>\n                      </tr>\n                    </table>\n                  </td>\n                </tr>\n              </table>\n\n              <!-- Card: Mensaje de Error -->\n              <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: #fdf2f2; border-radius: 12px; overflow: hidden; border-left: 4px solid #dc3545; margin-bottom: 20px;\">\n                <tr>\n                  <td style=\"padding: 20px;\">\n                    <p style=\"margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #dc3545; text-transform: uppercase; letter-spacing: 1px;\">\n                      Mensaje de Error\n                    </p>\n                    <p style=\"margin: 0; font-size: 14px; color: #721c24; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.6; word-break: break-word;\">\n                      {{ $json.errorMessage }}\n                    </p>\n                  </td>\n                </tr>\n              </table>\n\n              <!-- Card: Stack Trace -->\n              <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: #f0f2f5; border-radius: 12px; overflow: hidden; margin-bottom: 25px;\">\n                <tr>\n                  <td style=\"padding: 20px;\">\n                    <p style=\"margin: 0 0 10px 0; font-size: 11px; font-weight: 700; color: #6c757d; text-transform: uppercase; letter-spacing: 1px;\">\n                      Stack Trace\n                    </p>\n                    <div style=\"background-color: #1e1e2e; border-radius: 8px; padding: 16px; overflow-x: auto;\">\n                      <pre style=\"margin: 0; font-size: 11px; color: #a9b7c6; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.5; white-space: pre-wrap; word-break: break-word;\">{{ $json.errorStack }}</pre>\n                    </div>\n                  </td>\n                </tr>\n              </table>\n\n              <!-- Botón: Ver Ejecución -->\n              <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                <tr>\n                  <td align=\"center\" style=\"padding: 5px 0 10px 0;\">\n                    <a href=\"{{ $json.executionUrl }}\" \n                       target=\"_blank\"\n                       style=\"display: inline-block; background: linear-gradient(135deg, #10254e 0%, #1a3a6e 100%); color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 14px 40px; border-radius: 8px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(16,37,78,0.3);\">\n                      Ver Ejecución en n8n &rarr;\n                    </a>\n                  </td>\n                </tr>\n              </table>\n\n            </td>\n          </tr>\n\n          <!-- ============================================ -->\n          <!-- FOOTER -->\n          <!-- ============================================ -->\n          <tr>\n            <td style=\"background-color: #10254e; padding: 25px 40px; text-align: center;\">\n              <p style=\"margin: 0 0 6px 0; font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 0.3px;\">\n                Alerta generada automáticamente por n8n Error Handler\n              </p>\n              <p style=\"margin: 0; font-size: 11px; color: rgba(255,255,255,0.4);\">\n                Grupo Apolo &bull; Dirección de IT &bull; Coordinación de Ciberseguridad\n              </p>\n            </td>\n          </tr>\n\n        </table>\n        <!-- /Container -->\n\n      </td>\n    </tr>\n  </table>\n  <!-- /Wrapper -->\n\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "42c9310c-cbd7-499c-a5a0-a89bb7f15910",
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -96
+      ],
+      "webhookId": "ee3e0711-e7ab-442e-babd-b44cef549ab6",
+      "credentials": {
+        "smtp": {
+          "id": "GTrrsNk60rlPpvkZ",
+          "name": "SMTP account Espacio FLEX"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-severity",
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "ALTA",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8081066b-602c-4e59-b93e-e3ac24e3f857",
+      "name": "¿Severidad Alta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    status: 'logged',\n    message: `Error de severidad ${$input.first().json.severity} registrado. Solo se notificó por email y canal general de Teams.`,\n    timestamp: $input.first().json.timestamp\n  }\n}];"
+      },
+      "id": "38cce40b-1f06-49ca-a318-a3bbe750a553",
+      "name": "Log No Urgente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channelMessage",
+        "teamId": {
+          "__rl": true,
+          "value": "c3513e60-53d8-4abc-9eac-d7b24866a6d7",
+          "mode": "list",
+          "cachedResultName": "DEPARTAMENTO DE TI 💻"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "19:3f851b403f8e41f1aa96b1d26c4a9867@thread.tacv2",
+          "mode": "list",
+          "cachedResultName": "Ciberseguridad",
+          "cachedResultUrl": "https://teams.cloud.microsoft/l/channel/19%3A3f851b403f8e41f1aa96b1d26c4a9867%40thread.tacv2/Ciberseguridad?groupId=c3513e60-53d8-4abc-9eac-d7b24866a6d7&tenantId=3f067246-5a6c-47ee-8ac4-241eef339ee0&allowXTenantAccess=False"
+        },
+        "contentType": "html",
+        "message": "={{ $json.teamsHtml }}",
+        "options": {}
+      },
+      "id": "3370c967-5867-42da-81d6-77479746d90d",
+      "name": "Notificar en Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        64
+      ],
+      "notesInFlow": true,
+      "webhookId": "41ac38fd-748f-4a46-850c-871500f55ea3",
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "nfde13w3DGJ53MFF",
+          "name": "Microsoft Teams account Braulio"
+        }
+      },
+      "notes": "Notificación al canal de Teams de Ciberseguridad"
+    },
+    {
+      "parameters": {
+        "resource": "channelMessage",
+        "teamId": {
+          "__rl": true,
+          "value": "c3513e60-53d8-4abc-9eac-d7b24866a6d7",
+          "mode": "list",
+          "cachedResultName": "DEPARTAMENTO DE TI 💻"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "19:3f851b403f8e41f1aa96b1d26c4a9867@thread.tacv2",
+          "mode": "list",
+          "cachedResultName": "Ciberseguridad",
+          "cachedResultUrl": "https://teams.cloud.microsoft/l/channel/19%3A3f851b403f8e41f1aa96b1d26c4a9867%40thread.tacv2/Ciberseguridad?groupId=c3513e60-53d8-4abc-9eac-d7b24866a6d7&tenantId=3f067246-5a6c-47ee-8ac4-241eef339ee0&allowXTenantAccess=False"
+        },
+        "contentType": "html",
+        "message": "={{ JSON.stringify({ '@type': 'MessageCard', '@context': 'http://schema.org/extensions', 'themeColor': 'FF0000', 'summary': '🚨 ERROR CRÍTICO', 'sections': [{ 'activityTitle': '🚨 ERROR CRÍTICO EN PRODUCCIÓN', 'activitySubtitle': $json.timestamp, 'text': '**Workflow:** ' + $json.workflowName + '<br>**Nodo:** ' + $json.lastNode + '<br>**Error:** ' + $json.errorMessage, 'markdown': true }] }) }}",
+        "options": {}
+      },
+      "id": "223d5c83-14b6-43ff-a703-d5522ab2c301",
+      "name": "Alerta Urgente Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        240,
+        224
+      ],
+      "notesInFlow": true,
+      "webhookId": "41ac38fd-748f-4a46-850c-871500f55ea3",
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "nfde13w3DGJ53MFF",
+          "name": "Microsoft Teams account Braulio"
+        }
+      },
+      "notes": "Notificación al canal de Teams de Ciberseguridad"
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Formatear Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Error": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "¿Severidad Alta?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notificar en Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Severidad Alta?": {
+      "main": [
+        [
+          {
+            "node": "Alerta Urgente Teams",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Urgente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "any",
+    "availableInMCP": false
+  },
+  "tags": [
+    {
+      "id": "KVXA1R2FqILTSoPk",
+      "name": "monitoring"
+    },
+    {
+      "id": "VbBqWugPdTHbV77A",
+      "name": "error-handling"
+    }
+  ],
+  "createdAt": "2026-02-17T02:59:53.478Z",
+  "updatedAt": "2026-03-03T23:07:29.944Z",
+  "versionId": "dbc0c0ba-3fd5-4b05-8685-308df1f1e9d6"
+}
